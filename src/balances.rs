@@ -34,23 +34,18 @@ impl Pallet {
     pub fn transfer(&mut self, caller: String, to: String, amount: u128) -> Result<(), &'static str> {
         let from_balance = self.balance(&caller);
         let to_balance = self.balance(&to);
-        match from_balance.checked_sub(amount) {
-            None => {
-                Err("Not enough funds")
-            }
-            Some(_) => {
-                match to_balance.checked_add(amount) {
-                    None => {
-                        Err("Overflow occured!")
-                    }
-                    Some(_) => {
-                        self.set_balance(&caller, from_balance - amount);
-                        self.set_balance(&to, to_balance + amount);
+
+        from_balance.checked_sub(amount)
+            .ok_or("Not enough funds!")
+            .and_then(|new_from_balance| {
+                to_balance.checked_add(new_from_balance)
+                    .ok_or("Overflow occured!")
+                    .and_then(|new_to_balance| {
+                        self.set_balance(&caller, new_from_balance);
+                        self.set_balance(&to, new_to_balance);
                         Ok(())
-                    }
-                }
-            }
-        }
+                    })
+            })
     }
 }
 
@@ -76,7 +71,7 @@ mod tests {
         assert_eq!(balances.balance(&"Bob".to_string()), 50);
 
         let result = balances.transfer("Alice".to_string(), "Bob".to_string(), 60);
-        assert_eq!(result, Err("Not enough funds"));
+        assert_eq!(result, Err("Not enough funds!"));
         assert_eq!(balances.balance(&"Alice".to_string()), 50);
         assert_eq!(balances.balance(&"Bob".to_string()), 50);
     }
