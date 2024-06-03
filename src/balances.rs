@@ -36,44 +36,41 @@ where
 	/// and that no mathematical overflows occur.
 	pub fn transfer(
 		&mut self,
-		caller: AccountId,
+		from: AccountId,
 		to: AccountId,
 		amount: Balance,
 	) -> Result<(), &'static str> {
-		let from_balance = self.balance(&caller);
-		let to_balance = self.balance(&to);
+		let from_balance = self.balance(&from);
+        let to_balance = self.balance(&to);
 
-		from_balance
-			.checked_sub(&amount)
-			.ok_or("Not enough funds!")
-			.and_then(|new_from_balance| {
-				to_balance.checked_add(&amount).ok_or("Overflow occured!").and_then(
-					|new_to_balance| {
-						self.set_balance(caller, new_from_balance);
-						self.set_balance(to, new_to_balance);
-						Ok(())
-					},
-				)
-			})
+        let new_from_balance = from_balance.checked_sub(&amount).ok_or("Not enough funds!")?;
+        let new_to_balance = to_balance.checked_add(&amount).ok_or("Overflow")?;
+
+        self.balances.insert(from, new_from_balance);
+        self.balances.insert(to, new_to_balance);
+
+        Ok(())
 	}
 }
 
 #[cfg(test)]
 mod tests {
+    use crate::balances::Pallet;
+
 	#[test]
 	fn init_balances() {
-		let mut balances = super::Pallet::new();
+		let mut balances: Pallet<String, u32> = super::Pallet::new();
 
 		assert_eq!(balances.balance(&"Alice".to_string()), 0);
-		balances.set_balance(&"Alice".to_string(), 100);
+		balances.set_balance("Alice".to_string(), 100);
 		assert_eq!(balances.balance(&"Alice".to_string()), 100);
 		assert_eq!(balances.balance(&"Bob".to_string()), 0);
 	}
 
 	#[test]
 	fn transfer_balance() {
-		let mut balances = super::Pallet::new();
-		balances.set_balance(&"Alice".to_string(), 100);
+		let mut balances: Pallet<String, u32> = super::Pallet::new();
+		balances.set_balance("Alice".to_string(), 100);
 
 		balances.transfer("Alice".to_string(), "Bob".to_string(), 50).unwrap();
 		assert_eq!(balances.balance(&"Alice".to_string()), 50);

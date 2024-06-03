@@ -1,21 +1,31 @@
+
 mod balances;
 mod system;
 
 mod types {
+
 	pub type AccountId = String;
 	pub type Balance = u128;
+	pub type BlockNumber = u32;
+	pub type NonceNumber = u32;
 }
 
 #[derive(Debug)]
 pub struct Runtime {
-	system: system::Pallet,
-	balances: balances::Pallet<crate::types::AccountId, crate::types::Balance>,
+	system: system::Pallet<types::BlockNumber, types::AccountId, types::NonceNumber>,
+	balances: balances::Pallet<types::AccountId, types::Balance>,
 }
 
 impl Runtime {
 	pub fn new() -> Self {
 		Runtime { system: system::Pallet::new(), balances: balances::Pallet::new() }
 	}
+}
+
+impl Default for Runtime {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 fn main() {
@@ -30,14 +40,14 @@ fn main() {
 	assert_eq!(runtime.system.block_number, 1);
 
 	// first transaction
-	runtime.system.inc_nonce(alice);
+	runtime.system.inc_nonce(alice.to_string());
 	let _res = runtime
 		.balances
 		.transfer(alice.into(), bob.into(), 30)
 		.map_err(|e| eprintln!("Error: {}", e));
 
 	// second transaction
-	runtime.system.inc_nonce(alice);
+	runtime.system.inc_nonce(alice.to_string());
 	let _res = runtime
 		.balances
 		.transfer(alice.into(), charlie.into(), 20)
