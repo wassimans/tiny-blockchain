@@ -1,7 +1,6 @@
 mod balances;
 mod system;
 
-
 #[derive(Debug)]
 pub struct Runtime {
 	system: system::Pallet<Self>,
@@ -17,9 +16,7 @@ impl system::Config for Runtime {
 }
 
 impl balances::Config for Runtime {
-    type AccountId = String;
-
-    type Balance = u32;
+	type Balance = u32;
 }
 
 impl Runtime {
