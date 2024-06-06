@@ -1,11 +1,11 @@
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, ops::AddAssign};
 
-use num::{CheckedAdd, Zero};
+use num::{One, Zero};
 
 pub trait Config {
-	type BlockNumber: Zero + CheckedAdd<Output = Self::BlockNumber> + Copy + From<u8>;
+	type BlockNumber: Zero + One + AddAssign + Copy;
 	type AccountId: Ord;
-	type Nonce: Zero + CheckedAdd<Output = Self::Nonce> + Copy + From<u8>;
+	type Nonce: Zero + One + Copy;
 }
 
 /// This is the System Pallet.
@@ -31,7 +31,7 @@ impl<T: Config> Pallet<T> {
 
 	/// Increases the block number by one.
 	pub fn inc_block_number(&mut self) {
-		self.block_number = self.block_number + 1.into();
+		self.block_number += T::BlockNumber::one();
 	}
 
 	/// Increment the nonce of an account. This helps us keep track of how many transactions each
@@ -39,8 +39,8 @@ impl<T: Config> Pallet<T> {
 	pub fn inc_nonce(&mut self, who: T::AccountId) {
 		self.nonce
 			.entry(who)
-			.and_modify(|curr| *curr = *curr + 1.into())
-			.or_insert(1.into());
+			.and_modify(|curr| *curr = *curr + T::Nonce::one())
+			.or_insert(T::Nonce::one());
 	}
 }
 

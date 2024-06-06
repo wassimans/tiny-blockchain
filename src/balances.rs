@@ -28,7 +28,7 @@ impl<T: Config> Pallet<T> {
 	/// Get the balance of an account `who`.
 	/// If the account has no stored balance, we return zero.
 	pub fn balance(&self, who: &T::AccountId) -> T::Balance {
-		*self.balances.get(who).unwrap_or(&Zero::zero())
+		*self.balances.get(who).unwrap_or(&T::Balance::zero())
 	}
 
 	/// Transfer `amount` from one account to another.
@@ -36,17 +36,17 @@ impl<T: Config> Pallet<T> {
 	/// and that no mathematical overflows occur.
 	pub fn transfer(
 		&mut self,
-		from: T::AccountId,
+		caller: T::AccountId,
 		to: T::AccountId,
 		amount: T::Balance,
-	) -> Result<(), &'static str> {
-		let from_balance = self.balance(&from);
+	) -> crate::support::DispatchResult {
+		let from_balance = self.balance(&caller);
 		let to_balance = self.balance(&to);
 
 		let new_from_balance = from_balance.checked_sub(&amount).ok_or("Not enough funds!")?;
 		let new_to_balance = to_balance.checked_add(&amount).ok_or("Overflow")?;
 
-		self.balances.insert(from, new_from_balance);
+		self.balances.insert(caller, new_from_balance);
 		self.balances.insert(to, new_to_balance);
 
 		Ok(())
