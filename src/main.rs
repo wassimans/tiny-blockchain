@@ -3,14 +3,15 @@ use support::Dispatch;
 use crate::types::Block;
 
 mod balances;
+mod proof_of_existence;
 mod support;
 mod system;
-mod proof_of_existence;
 
 #[derive(Debug)]
 pub struct Runtime {
 	system: system::Pallet<Self>,
 	balances: balances::Pallet<Self>,
+	proof_of_existence: proof_of_existence::Pallet<Self>,
 }
 
 impl system::Config for Runtime {
@@ -25,9 +26,17 @@ impl balances::Config for Runtime {
 	type Balance = u128;
 }
 
+impl proof_of_existence::Config for Runtime {
+    type Content = &'static str;
+}
+
 impl Runtime {
 	pub fn new() -> Self {
-		Runtime { system: system::Pallet::new(), balances: balances::Pallet::new() }
+		Runtime {
+			system: system::Pallet::new(),
+			balances: balances::Pallet::new(),
+			proof_of_existence: proof_of_existence::Pallet::new(),
+		}
 	}
 }
 
@@ -54,6 +63,7 @@ mod types {
 // Note that it is just an accumulation of the calls exposed by each module.
 pub enum RuntimeCall {
 	Balances(balances::Call<Runtime>),
+	ProofOfExistence(proof_of_existence::Call<Runtime>),
 }
 
 impl Runtime {
@@ -102,6 +112,9 @@ impl crate::support::Dispatch for Runtime {
 			RuntimeCall::Balances(call) => {
 				self.balances.dispatch(caller, call)?;
 			},
+			RuntimeCall::ProofOfExistence(call) => {
+				self.proof_of_existence.dispatch(caller, call)?;
+			}
 		}
 		Ok(())
 	}
@@ -114,15 +127,64 @@ fn main() {
 	let charlie = &"charlie".to_string();
 	runtime.balances.set_balance(alice.into(), 100);
 
-	let new_block = Block {
+	let block_1 = Block {
 		header: support::Header { block_number: 1 },
 		extrinsics: vec![support::Extrinsic {
 			caller: "alice".to_string(),
-			call: RuntimeCall::Balances(balances::Call::Transfer { to: "bob".to_string(), amount: 69 }),
+			call: RuntimeCall::Balances(balances::Call::Transfer {
+				to: "bob".to_string(),
+				amount: 69,
+			}),
 		}],
 	};
 
-	runtime.execute_block(new_block).expect("All blocks being executed must be valid.");
+    let block_2 = types::Block {
+        header: support::Header { block_number: 2 },
+        extrinsics: vec![
+            support::Extrinsic {
+                caller: alice.clone(),
+                call: RuntimeCall::ProofOfExistence(proof_of_existence::Call::CreateClaim {
+                    claim: "Hello, world!",
+                }),
+            },
+            support::Extrinsic {
+                caller: bob.clone(),
+                call: RuntimeCall::ProofOfExistence(proof_of_existence::Call::CreateClaim {
+                    claim: "Hello, world!",
+                }),
+            },
+        ],
+    };
+
+    let block_3 = types::Block {
+        header: support::Header { block_number: 3 },
+        extrinsics: vec![
+            support::Extrinsic {
+                caller: alice.clone(),
+                call: RuntimeCall::ProofOfExistence(proof_of_existence::Call::RevokeClaim {
+                    claim: "Hello, world!",
+                }),
+            },
+            support::Extrinsic {
+                caller: bob.clone(),
+                call: RuntimeCall::ProofOfExistence(proof_of_existence::Call::CreateClaim {
+                    claim: "Hello, world!",
+                }),
+            },
+        ],
+    };
+
+	runtime
+		.execute_block(block_1)
+		.expect("All blocks being executed must be valid.");
+
+	runtime
+		.execute_block(block_2)
+		.expect("All blocks being executed must be valid.");
+
+	runtime
+		.execute_block(block_3)
+		.expect("All blocks being executed must be valid.");
 
 	// inspect the runtime state
 	println!("{:#?}", runtime);
